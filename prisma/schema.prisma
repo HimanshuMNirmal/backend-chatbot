@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public"]
 }
 
 model Session {
@@ -15,6 +16,8 @@ model Session {
   createdAt   DateTime  @default(now())
   lastActive  DateTime  @updatedAt
   messages    Message[]
+
+  @@schema("public")
 }
 
 model Message {
@@ -27,4 +30,5 @@ model Message {
   isRead     Boolean  @default(false)
 
   @@index([sessionId])
+  @@schema("public")
 }
