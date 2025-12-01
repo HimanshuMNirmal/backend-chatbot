@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import app from './app';
 import dotenv from 'dotenv';
+import { initializeSocketHandlers } from './services/socketService';
 
 dotenv.config();
 
@@ -15,13 +16,7 @@ const io = new Server(httpServer, {
     },
 });
 
-io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-    });
-});
+initializeSocketHandlers(io);
 
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
