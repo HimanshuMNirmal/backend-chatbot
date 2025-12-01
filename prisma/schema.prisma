@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id          String    @id @default(uuid())
+  sessionId   String    @unique
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  lastActive  DateTime  @updatedAt
+  messages    Message[]
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  message    String
+  senderType String
+  timestamp  DateTime @default(now())
+  isRead     Boolean  @default(false)
+
+  @@index([sessionId])
+}
