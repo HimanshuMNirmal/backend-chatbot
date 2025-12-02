@@ -1,12 +1,10 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["multiSchema"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["public"]
 }
 
 model Session {
@@ -18,8 +16,6 @@ model Session {
   lastActive       DateTime  @updatedAt
   handedOffToAdmin Boolean   @default(false)
   messages         Message[]
-
-  @@schema("public")
 }
 
 model Message {
@@ -32,7 +28,6 @@ model Message {
   isRead     Boolean  @default(false)
 
   @@index([sessionId])
-  @@schema("public")
 }
 
 model AIConfig {
@@ -44,6 +39,4 @@ model AIConfig {
   temperature     Float    @default(0.7)
   maxTokens       Int      @default(500)
   updatedAt       DateTime @updatedAt
-
-  @@schema("public")
 }
