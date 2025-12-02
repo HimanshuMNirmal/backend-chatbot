@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import prisma from '../config/database';
 import { createOrGetSession } from './sessionService';
+import aiService from './aiService';
 
 export const initializeSocketHandlers = (io: Server) => {
     io.on('connection', (socket: Socket) => {
@@ -34,6 +35,43 @@ export const initializeSocketHandlers = (io: Server) => {
 
             // Send confirmation back to the sender
             socket.emit('message-received', { id: newMessage.id });
+
+            // Check if AI auto-response is enabled
+            const aiConfig = await aiService.getConfig();
+            if (aiConfig.isEnabled) {
+                // Emit AI thinking indicator
+                io.to(sessionId).emit('ai-thinking', { sessionId, isThinking: true });
+
+                // Generate AI response asynchronously
+                try {
+                    const aiResponse = await aiService.generateResponse(sessionId, message);
+
+                    if (aiResponse.content && !aiResponse.error) {
+                        // Save AI response to database
+                        const aiMessage = await prisma.message.create({
+                            data: {
+                                sessionId,
+                                message: aiResponse.content,
+                                senderType: 'ai',
+                                timestamp: new Date(),
+                            },
+                        });
+
+                        // Send AI response to user
+                        io.to(sessionId).emit('ai-reply', aiMessage);
+
+                        // Notify admins about new AI message
+                        io.emit('chat-list-update');
+                    } else {
+                        console.error('AI response error:', aiResponse.error);
+                    }
+                } catch (error) {
+                    console.error('Error generating AI response:', error);
+                } finally {
+                    // Stop AI thinking indicator
+                    io.to(sessionId).emit('ai-thinking', { sessionId, isThinking: false });
+                }
+            }
         });
 
         // Handle admin replies

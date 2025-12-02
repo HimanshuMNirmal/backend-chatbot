@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
@@ -30,5 +31,18 @@ model Message {
   isRead     Boolean  @default(false)
 
   @@index([sessionId])
+  @@schema("public")
+}
+
+model AIConfig {
+  id              String   @id @default(uuid())
+  isEnabled       Boolean  @default(false)
+  provider        String   @default("openrouter") // "openai" or "openrouter"
+  model           String   @default("z-ai/glm-4.5-air:free")
+  systemPrompt    String   @default("You are a helpful customer support assistant.")
+  temperature     Float    @default(0.7)
+  maxTokens       Int      @default(500)
+  updatedAt       DateTime @updatedAt
+
   @@schema("public")
 }
