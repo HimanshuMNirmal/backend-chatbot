@@ -36,9 +36,19 @@ export const initializeSocketHandlers = (io: Server) => {
             // Send confirmation back to the sender
             socket.emit('message-received', { id: newMessage.id });
 
-            // Check if AI auto-response is enabled
+            // Check if session has been handed off to admin
+            const session = await prisma.session.findUnique({
+                where: { sessionId },
+            });
+
+            // Only generate AI response if:
+            // 1. AI is enabled
+            // 2. Session has NOT been handed off to admin
+            // 3. Message doesn't contain handoff request phrases
+            const wantsHuman = /(talk|speak|chat|connect|wanna|want|need).*(human|agent|person|support|representative|someone)|customer support|real person|live (chat|support|agent)/i.test(message);
+
             const aiConfig = await aiService.getConfig();
-            if (aiConfig.isEnabled) {
+            if (aiConfig.isEnabled && !session?.handedOffToAdmin && !wantsHuman) {
                 // Emit AI thinking indicator
                 io.to(sessionId).emit('ai-thinking', { sessionId, isThinking: true });
 
@@ -71,11 +81,32 @@ export const initializeSocketHandlers = (io: Server) => {
                     // Stop AI thinking indicator
                     io.to(sessionId).emit('ai-thinking', { sessionId, isThinking: false });
                 }
+            } else if (wantsHuman) {
+                // User requested human support - hand off to admin
+                await prisma.session.update({
+                    where: { sessionId },
+                    data: { handedOffToAdmin: true },
+                });
+
+                // Notify admins that user wants human support
+                io.emit('handoff-requested', { sessionId });
+
+                // Notify user that they're being connected to support
+                const handoffMessage = await prisma.message.create({
+                    data: {
+                        sessionId,
+                        message: 'Connecting you to our support team...',
+                        senderType: 'ai',
+                        timestamp: new Date(),
+                    },
+                });
+                io.to(sessionId).emit('ai-reply', handoffMessage);
             }
         });
 
         // Handle admin replies
         // Saves message to DB and sends only to the specific user's room
+        // Also marks session as handed off to admin (AI will stop responding)
         socket.on('admin-reply', async (data: { sessionId: string; message: string; timestamp: string }) => {
             const { sessionId, message, timestamp } = data;
 
@@ -86,6 +117,12 @@ export const initializeSocketHandlers = (io: Server) => {
                     senderType: 'admin',
                     timestamp: new Date(timestamp),
                 },
+            });
+
+            // Mark session as handed off to admin (AI will no longer respond)
+            await prisma.session.update({
+                where: { sessionId },
+                data: { handedOffToAdmin: true },
             });
 
             // Send reply only to the specific user session room

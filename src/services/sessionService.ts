@@ -6,13 +6,24 @@ export const createOrGetSession = async (sessionId: string, ipAddress?: string, 
     });
 
     if (!session) {
-        session = await prisma.session.create({
-            data: {
-                sessionId,
-                ipAddress,
-                userAgent,
-            },
-        });
+        try {
+            session = await prisma.session.create({
+                data: {
+                    sessionId,
+                    ipAddress,
+                    userAgent,
+                },
+            });
+        } catch (error: any) {
+            // Handle race condition - session was created by another request
+            if (error.code === 'P2002') {
+                session = await prisma.session.findUnique({
+                    where: { sessionId },
+                });
+            } else {
+                throw error;
+            }
+        }
     } else {
         session = await prisma.session.update({
             where: { sessionId },

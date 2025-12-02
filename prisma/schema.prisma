@@ -10,13 +10,14 @@ datasource db {
 }
 
 model Session {
-  id          String    @id @default(uuid())
-  sessionId   String    @unique
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime  @default(now())
-  lastActive  DateTime  @updatedAt
-  messages    Message[]
+  id               String    @id @default(uuid())
+  sessionId        String    @unique
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+  lastActive       DateTime  @updatedAt
+  handedOffToAdmin Boolean   @default(false)
+  messages         Message[]
 
   @@schema("public")
 }
