@@ -21,6 +21,9 @@ export const initializeSocketHandlers = (io: Server) => {
         socket.on('user-message', async (data: { sessionId: string; message: string; timestamp: string }) => {
             const { sessionId, message, timestamp } = data;
 
+            // Ensure session exists before creating message (prevents foreign key constraint error)
+            await createOrGetSession(sessionId);
+
             const newMessage = await prisma.message.create({
                 data: {
                     sessionId,
@@ -109,6 +112,9 @@ export const initializeSocketHandlers = (io: Server) => {
         // Also marks session as handed off to admin (AI will stop responding)
         socket.on('admin-reply', async (data: { sessionId: string; message: string; timestamp: string }) => {
             const { sessionId, message, timestamp } = data;
+
+            // Ensure session exists before creating message (prevents foreign key constraint error)
+            await createOrGetSession(sessionId);
 
             const newMessage = await prisma.message.create({
                 data: {
